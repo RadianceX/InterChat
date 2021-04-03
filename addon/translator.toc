@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: |cFF00AAFFInterChat
+## Author: RadianceX
+## Version: 1.0
+## DefaultState: Enabled
+## LoadOnDemand: 0
+translator.lua
+languages.lua

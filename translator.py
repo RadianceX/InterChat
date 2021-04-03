@@ -10,13 +10,13 @@ class Translator:
         """
         Constructor
         """
-        self._symbols_used_to_encode: Final[int] = 3
+        self._num_symbols_used_to_encode: Final[int] = 3
         self._encoding_alphabet: Final[Tuple[str, ...]] = lang_uniq_symbols
-        self._alphabet: Final[Tuple[str]] = self.__setup_message_alphabet()
+        self._message_alphabet: Final[Tuple[str]] = self.__setup_message_alphabet()
         self._head: Final[str] = self.__get_prefix()
         self._tail: Final[str] = self.__get_postfix()
         self._encoding_table: Final[Dict[str, str]] = self.__setup_encoding_table()
-        self._decode_table: Final[Dict[str, str]] = self.__setup_decoding_table()
+        self._decoding_table: Final[Dict[str, str]] = self.__setup_decoding_table()
 
     def encode(self, message: str) -> str:
         """
@@ -60,9 +60,9 @@ class Translator:
 
         encoded_symbols: List[str, ...] = list()
         # Slice encoded message by parts of encoded symbol len
-        for i in range(0, len(translated_message), self._symbols_used_to_encode):
+        for i in range(0, len(translated_message), self._num_symbols_used_to_encode):
             slice_begin: int = i
-            slice_end: int = i + self._symbols_used_to_encode
+            slice_end: int = i + self._num_symbols_used_to_encode
             encoded_symbols.append(
                 translated_message[slice_begin:slice_end]
             )
@@ -70,7 +70,7 @@ class Translator:
         # Decode chars
         decoded_symbols: List[str, ...] = list(
             map(
-                self._decode_table.get,
+                self._decoding_table.get,
                 encoded_symbols
             )
         )
@@ -150,7 +150,7 @@ class Translator:
         :return: None
         """
         assert message[0] == message[1] == message[-2] == message[-3]
-        assert (len(message) - len(self._encoding_alphabet)) % self._symbols_used_to_encode == 0
+        assert (len(message) - len(self._encoding_alphabet)) % self._num_symbols_used_to_encode == 0
 
     def __encoding_alphabet_from_msg(self, message: str) -> List[str]:
         """
@@ -202,7 +202,7 @@ class Translator:
         """
         symbol_index: Final[int] = -1
         encoding_value: Final[str] = self._encoding_alphabet[symbol_index]
-        temp: Final[str] = encoding_value * (self._symbols_used_to_encode - 1) + self._encoding_alphabet[0]
+        temp: Final[str] = encoding_value * (self._num_symbols_used_to_encode - 1) + self._encoding_alphabet[0]
         return temp
 
     def __get_prefix(self) -> str:
@@ -212,7 +212,7 @@ class Translator:
         """
         symbol_index: Final[int] = -1
         encoding_value: Final[str] = self._encoding_alphabet[symbol_index]
-        temp: Final[str] = encoding_value * (self._symbols_used_to_encode - 1) + self._encoding_alphabet[1]
+        temp: Final[str] = encoding_value * (self._num_symbols_used_to_encode - 1) + self._encoding_alphabet[1]
         return temp
 
     def __setup_encoding_table(self) -> Dict[str, str]:
@@ -222,7 +222,7 @@ class Translator:
         """
         gen = self.__uniq_combination_generator(self._encoding_alphabet)
         temp_table: Dict[str, str] = dict()
-        for char in self._alphabet:
+        for char in self._message_alphabet:
             temp_table[char] = gen.__next__()
 
         return temp_table
@@ -240,5 +240,5 @@ class Translator:
         Checks that passed message is encoded
         :param message: filtered message
         """
-        assert len(message) % self._symbols_used_to_encode == 0
+        assert len(message) % self._num_symbols_used_to_encode == 0
         assert message.startswith(self._head) and message.endswith(self._tail)
