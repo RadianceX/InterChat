@@ -183,7 +183,7 @@ class Translator:
         """
         other_alphabet: list = self.__encoding_alphabet_from_msg(message)
 
-        # remove other_alphabet from message
+        # Remove other_alphabet from message
         alphabet_start_index: Final[int] = len(self._head)
         alphabet_len: Final[int] = len(self._encoding_alphabet)
         alphabet_end_index: Final[int] = alphabet_start_index + alphabet_len
