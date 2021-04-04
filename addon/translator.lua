@@ -1,3 +1,6 @@
+require("addon.libs.utf8")
+require("addon.languages")
+
 Translator = {}
 function Translator:new(lang_uniq_symbols)
     local private = {}
@@ -8,12 +11,15 @@ function Translator:new(lang_uniq_symbols)
             :param message: filtered message
             :return: encoding alphabet
             --]]
-            local alphabet_start_index = #private.head
+            local alphabet_start_index = string.utf8len(private.head) + 1  -- +1 because lua counts indexes starting from 1
             local alphabet_len = #private.encoding_alphabet
-            local alphabet_end_index = alphabet_start_index + alphabet_len
-            local other_alphabet = string.sub(message, alphabet_start_index, alphabet_end_index)
-
-            return other_alphabet
+            local alphabet_end_index = alphabet_start_index + alphabet_len - 1
+            local other_alphabet = string.utf8sub(message, alphabet_start_index, alphabet_end_index)
+            local other_alphabet_table = {}
+            for i = 1, string.utf8len(other_alphabet) do
+                other_alphabet_table[i] = string.utf8sub(other_alphabet, i, i)
+            end
+            return other_alphabet_table
         end
 
         function private:translate_message(message)
@@ -33,10 +39,10 @@ function Translator:new(lang_uniq_symbols)
             local our_alphabet = private.encoding_alphabet
 
             -- Remove other_alphabet from message
-            local alphabet_start_index = #private.head
+            local alphabet_start_index = string.utf8len(private.head)
             local alphabet_len = #private.encoding_alphabet
             local alphabet_end_index = alphabet_start_index + alphabet_len
-            local message = string.sub(message, 0, alphabet_start_index)..string.sub(message, alphabet_end_index, #message)
+            local msg = string.utf8sub(message, 1, alphabet_start_index)..string.utf8sub(message, alphabet_end_index + 1, string.utf8len(message))
 
             -- Translate message
             local translate_alphabet_table = {}
@@ -45,10 +51,10 @@ function Translator:new(lang_uniq_symbols)
             end
 
             for match, substitution in pairs(translate_alphabet_table) do
-                message = string.gsub(message, match, substitution)
+                local msg = string.gsub(msg, match, substitution)
             end
 
-            return message
+            return msg
         end
 
         function private:__filter_message(message)
@@ -93,7 +99,7 @@ function Translator:new(lang_uniq_symbols)
             --]]
             local symbol_index = #private.encoding_alphabet
             local encoding_value = private.encoding_alphabet[symbol_index]
-            local prefix = string.rep(encoding_value, private.numSymbolsUsedToEncode - 1) .. private.encoding_alphabet[1]
+            local prefix = string.rep(encoding_value, private.num_symbols_used_to_encode - 1) .. private.encoding_alphabet[1]
             return prefix
         end
 
@@ -104,7 +110,7 @@ function Translator:new(lang_uniq_symbols)
             --]]
             local symbol_index = #private.encoding_alphabet
             local encoding_value = private.encoding_alphabet[symbol_index]
-            local prefix = string.rep(encoding_value, private.numSymbolsUsedToEncode - 1) .. private.encoding_alphabet[2]
+            local prefix = string.rep(encoding_value, private.num_symbols_used_to_encode - 1) .. private.encoding_alphabet[2]
             return prefix
         end
 
@@ -129,15 +135,21 @@ function Translator:new(lang_uniq_symbols)
             Generate encoding dictionary
             :return: dictionary with "input char": "encoded representation" items
             --]]
+            local coder_values = {}
             local encoding_table = {}
 
             for i, a in ipairs(private.encoding_alphabet) do
                 for _, b in ipairs(private.encoding_alphabet) do
                     for _, c in ipairs(private.encoding_alphabet) do
-                        table.insert(encoding_table, #encoding_table+1, tostring(a)..tostring(b)..tostring(c))
+                        table.insert(coder_values, #coder_values+1, tostring(a)..tostring(b)..tostring(c))
                     end
                 end
             end
+
+            for i, val in ipairs(private.message_alphabet) do
+                encoding_table[val] = coder_values[i]
+            end
+
             return encoding_table
         end
 
@@ -157,15 +169,34 @@ function Translator:new(lang_uniq_symbols)
 
         function private:str_to_table(str)
             local t = {}
-            for i = 1, #str do
-                t[i] = str:sub(i, i)
+            for i = 1, string.utf8len(str) do
+                t[i] = string.utf8sub(str, i, i)
             end
             return t
         end
 
-        private.numSymbolsUsedToEncode = 3
+        function private:prepare_message(message)
+            --[[
+            Prepare message for printing
+            :param message: encoded message
+            :return: prepared message
+            --]]
+
+            -- https://stackoverflow.com/a/33968863/13356680
+            local msg = ""
+
+            for i = 1, string.utf8len(message) do
+                msg = msg .. string.utf8sub(message, i, i) .. ' '
+            end
+
+            msg = string.utf8sub(msg, 1, string.utf8len(msg)-1)
+
+            return msg
+        end
+
+        private.num_symbols_used_to_encode = 3
         private.encoding_alphabet = lang_uniq_symbols
-        private.messageAlphabet = private:setup_message_alphabet()
+        private.message_alphabet = private:setup_message_alphabet()
         private.head = private:get_prefix()
         private.tail = private:get_postfix()
         private.encoding_table = private:setup_encoding_table()
@@ -185,14 +216,15 @@ function Translator:new(lang_uniq_symbols)
             --]]
             local message = private:str_to_table(message)
             local encoded_data = {}
-            encoded_data = private:array_concat(encoded_data, private.head)
-            encoded_data = private:array_concat(encoded_data, private.encoding_alphabet)
+            local encoded_data = private:array_concat(encoded_data, private.head)
+            local encoded_data = private:array_concat(encoded_data, private.encoding_alphabet)
             for _, val in ipairs(message) do
                 local encoded_char = private.encoding_table[val]
                 table.insert(encoded_data, #encoded_data+1, encoded_char)
             end
-            encoded_data = private:array_concat(encoded_data, private.tail)
-            local encoded_string = table.concat(encoded_data, ' ')
+            local encoded_data = private:array_concat(encoded_data, private.tail)
+            local encoded_string = table.concat(encoded_data, '')
+            local encoded_string = private:prepare_message(encoded_string)
 
             return encoded_string
         end
@@ -212,17 +244,17 @@ function Translator:new(lang_uniq_symbols)
 
             -- Slice encoded message by parts of encoded symbol len
             local encoded_symbols = {}
-            for i=1, #translated_message, private.num_symbols_used_to_encode do
+            for i=1, string.utf8len(translated_message), private.num_symbols_used_to_encode do
                 local slice_begin = i
-                local slice_end = i + private.num_symbols_used_to_encode
-                local encoded_symbol = string.sub(translated_message, slice_begin, slice_end)
+                local slice_end = i + private.num_symbols_used_to_encode - 1
+                local encoded_symbol = string.utf8sub(translated_message, slice_begin, slice_end)
                 table.insert(encoded_symbols, #encoded_symbols+1, encoded_symbol)
             end
 
             -- Decode chars
             local decoded_symbols = {}
             for i, val in ipairs(encoded_symbols) do
-                table.insert(decoded_symbols, i, private.decoding_table[val])
+                decoded_symbols[i] = private.decoding_table[val]
             end
 
             local decoded_message = table.concat(decoded_symbols, '')
@@ -234,6 +266,11 @@ function Translator:new(lang_uniq_symbols)
 end
 
 
-local test = Translator:new({'1', '2', '3', 'ц', '0', 'й'})
-local encoded = test:encode("DUDE")
-print(encoded)
+local commonTranslator = Translator:new(languages.common)
+local orcishTranslator = Translator:new(languages.orcish)
+local common_message = commonTranslator:encode("Duдеыї123")
+
+
+local decoded = orcishTranslator:decode(common_message)
+--print(encoded)
+print(decoded)
