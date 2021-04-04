@@ -50,9 +50,7 @@ function Translator:new(lang_uniq_symbols)
                 translate_alphabet_table[ other_alphabet[i] ] = our_alphabet[i]
             end
 
-            for match, substitution in pairs(translate_alphabet_table) do
-                local msg = string.gsub(msg, match, substitution)
-            end
+            local msg = utf8replace(msg, translate_alphabet_table)
 
             return msg
         end
@@ -264,13 +262,3 @@ function Translator:new(lang_uniq_symbols)
     setmetatable(public,self)
     self.__index = self; return public
 end
-
-
-local commonTranslator = Translator:new(languages.common)
-local orcishTranslator = Translator:new(languages.orcish)
-local common_message = commonTranslator:encode("Duдеыї123")
-
-
-local decoded = orcishTranslator:decode(common_message)
---print(encoded)
-print(decoded)

@@ -1,5 +1,5 @@
 ## Interface: 30300
-## Title: |cFF00AAFFInterChat
+## Title: |cFF00AAFFTranslate
 ## Author: RadianceX
 ## Version: 1.0
 ## DefaultState: Enabled
